@@ -43,6 +43,7 @@ module BusinessDateCalculator
     end
 
     def advance(date, n, convention = :following)
+      date = date.to_date
       range_check(date)
       @business_dates[adjusted_date_index(date, convention) + n]
     end

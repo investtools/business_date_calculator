@@ -47,6 +47,16 @@ module BusinessDateCalculator
       @business_dates[adjusted_date_index(date, convention) + n]
     end
 
+    def last_day_of_previous_month(date)
+      m = date.month
+      y = date.year
+      if m == 1
+        m = 0
+        y = y -1
+      end
+      adjust(Date.civil(y, (m - 1), -1), :preceding)
+    end
+
     protected
 
     def build(start_date, end_date, holidays)

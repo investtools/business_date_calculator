@@ -16,6 +16,9 @@ describe BusinessDateCalculator::Calendar do
     it 'returns true when is holiday' do
       expect(business_date_calculator.is_holiday?(Date.parse('2015-01-01'))).to be(true)
     end
+    it 'returns friday if its sunday' do
+      expect(business_date_calculator.adjust(Date.parse('2015-06-07'), :preceding)).to eq(Date.parse('2015-06-05'))
+    end
   end
   describe '#adjust' do
     it 'returns the next date' do
@@ -39,6 +42,14 @@ describe BusinessDateCalculator::Calendar do
   describe '#advance' do
     it 'returns the date plus n days' do
       expect(business_date_calculator.advance(Date.parse('2014-12-30'), 3, :following)).to eq Date.parse('2015-01-05')
+    end
+  end
+  describe '#last_day_of_previous_month' do
+    it 'returns the last date of previous month' do
+      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-01-05'))).to eq Date.parse('2014-12-31')
+      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-01-01'))).to eq Date.parse('2014-12-31')
+      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-01-31'))).to eq Date.parse('2014-12-31')
+      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-02-15'))).to eq Date.parse('2015-01-30')
     end
   end
 end

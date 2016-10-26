@@ -45,6 +45,10 @@ module BusinessDateCalculator
     def advance(date, n, convention = :following)
       date = date.to_date
       range_check(date)
+      index = adjusted_date_index(date, convention) + n
+      if index < 0
+        build(date + (index - 3).days, @end_date, @holidays)
+      end
       @business_dates[adjusted_date_index(date, convention) + n]
     end
 
@@ -53,7 +57,7 @@ module BusinessDateCalculator
       y = date.year
       if m == 1
         m = 0
-        y = y -1
+        y = y - 1
       end
       adjust(Date.civil(y, (m - 1), -1), :preceding)
     end

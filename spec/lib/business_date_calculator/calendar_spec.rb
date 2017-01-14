@@ -38,6 +38,16 @@ describe BusinessDateCalculator::Calendar do
     it 'puts into account the holiday' do
       expect(business_date_calculator.networkdays(Date.parse('2014-12-30'), Date.parse('2015-01-09'))).to eq(7)
     end
+    it 'is fast but not like roadrunner' do
+      start = (Time.now.to_f.round(3)*1000).to_i
+      bdc = BusinessDateCalculator::Calendar.new(Date.parse('2017-01-01'), Date.parse('2017-01-31'), [Date.parse('2017-01-03')])
+      jan02 = Date.parse('2017-01-02')
+      jan31 = Date.parse('2017-01-31')
+      100000.times do |x|
+        bdc.networkdays(jan02, jan31)
+      end
+      puts (Time.now.to_f.round(3)*1000).to_i - start
+    end
   end
   describe '#advance' do
     let(:today) { Date.parse('2016-02-17') }

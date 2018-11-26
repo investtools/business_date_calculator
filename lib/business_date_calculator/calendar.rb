@@ -42,12 +42,13 @@ module BusinessDateCalculator
       end
     end
 
-    def advance(date, n, convention = :following)
+    def advance(date, n, convention = :following, margin = 30)
       date = date.to_date
       range_check(date)
       index = adjusted_date_index(date, convention) + n
       if index < 0
-        build(date + (index - 3).days, @end_date, @holidays)
+        build(date + (index - margin).days, @end_date, @holidays)
+        return advance(date, n, convention, margin + 30)
       end
       @business_dates[adjusted_date_index(date, convention) + n]
     end

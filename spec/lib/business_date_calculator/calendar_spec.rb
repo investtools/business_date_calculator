@@ -63,6 +63,10 @@ describe BusinessDateCalculator::Calendar do
       xend_date = Date.today + 252.days
       expect(BusinessDateCalculator::Calendar.new(xstart_date, xend_date, []).advance(Date.parse('2016-02-17'), -1, :following)).to eq yesterday
     end
+    it 'returns the date 30 days before' do
+      result_date = BusinessDateCalculator::Calendar.new(Date.today, Date.today + 5.days, []).advance(Date.parse('2018-01-02'), -30, :following)
+      expect(result_date).to eq(Date.parse('2017-11-21'))
+    end
   end
   describe '#last_day_of_previous_month' do
     it 'returns the last date of previous month' do

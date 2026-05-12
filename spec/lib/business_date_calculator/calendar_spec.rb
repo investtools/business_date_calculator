@@ -98,6 +98,17 @@ describe BusinessDateCalculator::Calendar do
     end
   end
 
+  describe 'serialization' do
+    it 'can be Marshal.dump and Marshal.load with state preserved' do
+      cal = BusinessDateCalculator::Calendar.new(Date.parse('2015-01-05'), Date.parse('2015-01-09'), [Date.parse('2015-01-07')])
+      restored = Marshal.load(Marshal.dump(cal))
+
+      expect(restored.is_holiday?(Date.parse('2015-01-07'))).to be(true)
+      expect(restored.advance(Date.parse('2015-01-05'), 1, :following)).to eq(Date.parse('2015-01-06'))
+      expect(restored.adjust(Date.parse('2015-01-10'), :following)).to eq(Date.parse('2015-01-12'))
+    end
+  end
+
   describe 'thread safety' do
     it 'returns valid dates from concurrent advance calls that trigger range expansion' do
       cal = BusinessDateCalculator::Calendar.new(Date.today - 10.days, Date.today + 10.days, [])

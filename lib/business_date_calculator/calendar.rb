@@ -74,6 +74,31 @@ module BusinessDateCalculator
       @monitor.synchronize { adjust(Date.civil(date.year, date.month, 1) - 1, :preceding) }
     end
 
+    # Monitor nao e serializavel via Marshal (Rails.cache usa Marshal). Pula o monitor
+    # na serializacao e recria fresh na deserializacao.
+    def marshal_dump
+      {
+        start_date: @start_date,
+        end_date: @end_date,
+        holidays: @holidays,
+        business_dates: @business_dates,
+        business_date_index: @business_date_index,
+        next_business_date_index: @next_business_date_index,
+        prev_business_date_index: @prev_business_date_index
+      }
+    end
+
+    def marshal_load(data)
+      @monitor = Monitor.new
+      @start_date = data[:start_date]
+      @end_date = data[:end_date]
+      @holidays = data[:holidays]
+      @business_dates = data[:business_dates]
+      @business_date_index = data[:business_date_index]
+      @next_business_date_index = data[:next_business_date_index]
+      @prev_business_date_index = data[:prev_business_date_index]
+    end
+
     protected
 
     def build(start_date, end_date, holidays)

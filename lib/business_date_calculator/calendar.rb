@@ -1,23 +1,48 @@
 require 'monitor'
 
 module BusinessDateCalculator
+  # Calculadora de dias uteis com calendario customizavel de feriados.
+  #
+  # Mantem uma estrutura de dados indexada cobrindo um intervalo de datas, expandida
+  # dinamicamente quando consultas saem do range inicial. Thread-safe (Monitor reentrante)
+  # e Marshal-friendly para uso com Rails.cache.
+  #
+  # @example Uso basico
+  #   holidays = [Date.parse('2024-01-01'), Date.parse('2024-12-25')]
+  #   cal = BusinessDateCalculator::Calendar.new(Date.parse('2024-01-01'), Date.parse('2024-12-31'), holidays)
+  #   cal.advance(Date.parse('2024-01-08'), 5)   # => 2024-01-15
   class Calendar
-    # Constroi a estrutura de dados a partir de uma lista de holidays que
-    # sao os feriados, e usando um periodo especificado (fechado nas duas pontas).
+    # Cria um novo calendario.
+    #
+    # @param start_date [Date] data inicial do range (sera ajustada para o dia util anterior se nao for util)
+    # @param end_date [Date] data final do range (sera ajustada para o proximo dia util se nao for util)
+    # @param holidays [Array<Date>] lista de feriados a considerar como nao-uteis (dup.freeze interno)
     def initialize(start_date, end_date, holidays)
       @monitor = Monitor.new
       build(start_date, end_date, holidays)
     end
 
+    # Verifica se uma data nao e util (fim de semana ou feriado).
+    #
+    # @param date [Date] data a verificar
+    # @return [Boolean] true se for sabado, domingo ou estiver na lista de feriados
     def is_holiday?(date)
       @monitor.synchronize { date.wday.zero? || date.wday == 6 || @holidays.include?(date) }
     end
 
-    # Retorna a contagem de "saltos" entre dias uteis nas duas datas especificadas.
-    # Equivalente a (indice_util(date2) - indice_util(date1)). Para mesma data, retorna 0;
-    # para segunda-feira ate sexta-feira da mesma semana, retorna 4.
-    # Caso uma das datas nao seja dia util, deve ser especificada uma convencao de ajuste.
-    # date1 deve ser menor ou igual a date2.
+    # Conta dias uteis entre duas datas como "saltos" no indice de dias uteis.
+    # Equivalente a +indice_util(date2) - indice_util(date1)+: mesma data retorna 0,
+    # segunda-feira ate sexta-feira da mesma semana retorna 4.
+    #
+    # @param date1 [Date] data inicial (deve ser menor ou igual a date2)
+    # @param date2 [Date] data final
+    # @param convention1 [Symbol] convencao de ajuste para date1: +:unadjusted+, +:following+, +:preceding+
+    # @param convention2 [Symbol] convencao de ajuste para date2
+    # @return [Integer] numero de saltos entre dias uteis
+    # @raise [ArgumentError] quando date1 > date2
+    #
+    # @example
+    #   cal.networkdays(Date.parse('2024-01-08'), Date.parse('2024-01-12'))  # => 4
     def networkdays(date1, date2, convention1 = :unadjusted, convention2 = :unadjusted)
       if date1 > date2
         raise ArgumentError,
@@ -36,6 +61,17 @@ module BusinessDateCalculator
       end
     end
 
+    # Ajusta uma data para o dia util mais proximo segundo a convencao indicada.
+    # Se a data ja for util, retorna ela inalterada independente da convencao.
+    #
+    # @param date [Date] data a ajustar
+    # @param convention [Symbol] +:following+ (proximo dia util), +:preceding+ (anterior),
+    #   ou +:unadjusted+ (devolve a data sem alteracao)
+    # @return [Date] data ajustada
+    # @raise [RuntimeError] +:preceding+ quando nao ha dia util anterior conhecido
+    #
+    # @example
+    #   cal.adjust(Date.parse('2024-01-06'), :following)  # => 2024-01-08 (sabado -> segunda)
     def adjust(date, convention)
       @monitor.synchronize do
         range_check(date)
@@ -52,6 +88,20 @@ module BusinessDateCalculator
       end
     end
 
+    # Avanca (ou recua) +n+ dias uteis a partir de +date+. Expande o calendario
+    # automaticamente quando +n+ extrapola o range conhecido.
+    #
+    # @param date [Date, #to_date] data de partida
+    # @param n [Integer] numero de dias uteis a avancar (negativo para recuar)
+    # @param convention [Symbol] convencao para ajustar +date+ caso ela seja nao-util
+    # @param margin [Integer] folga em dias corridos para expansao do calendario (uso interno em recursao)
+    # @return [Date] dia util resultante
+    #
+    # @example Avancar 5 dias uteis
+    #   cal.advance(Date.parse('2024-01-08'), 5)  # => 2024-01-15
+    #
+    # @example Recuar 3 dias uteis
+    #   cal.advance(Date.parse('2024-01-15'), -3)  # => 2024-01-10
     def advance(date, n, convention = :following, margin = 30)
       @monitor.synchronize do
         date = date.to_date
@@ -70,12 +120,22 @@ module BusinessDateCalculator
       end
     end
 
+    # Ultimo dia util do mes anterior ao da data passada.
+    #
+    # @param date [Date] data de referencia
+    # @return [Date] ultimo dia util do mes anterior (com ajuste +:preceding+ se for nao-util)
+    #
+    # @example
+    #   cal.last_day_of_previous_month(Date.parse('2024-03-15'))  # => 2024-02-29
     def last_day_of_previous_month(date)
       @monitor.synchronize { adjust(Date.civil(date.year, date.month, 1) - 1, :preceding) }
     end
 
+    # @!group Marshal serialization
+
     # Monitor nao e serializavel via Marshal (Rails.cache usa Marshal). Pula o monitor
     # na serializacao e recria fresh na deserializacao.
+    # @api private
     def marshal_dump
       {
         start_date: @start_date,
@@ -88,6 +148,7 @@ module BusinessDateCalculator
       }
     end
 
+    # @api private
     def marshal_load(data)
       @monitor = Monitor.new
       @start_date = data[:start_date]
@@ -98,6 +159,8 @@ module BusinessDateCalculator
       @next_business_date_index = data[:next_business_date_index]
       @prev_business_date_index = data[:prev_business_date_index]
     end
+
+    # @!endgroup
 
     protected
 

@@ -1,0 +1,46 @@
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'bin/**/*'
+    - 'vendor/**/*'
+    - 'Guardfile'
+    - '*.gemspec'
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+
+Metrics/MethodLength:
+  Max: 30
+
+Metrics/AbcSize:
+  Max: 35
+
+Metrics/ClassLength:
+  Max: 150
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+
+# API publica do gem usa nomes legados (is_holiday?, parametro `n` em advance).
+# Renomear quebraria callers existentes (ex.: ivt-funds-api).
+Naming/PredicatePrefix:
+  Enabled: false
+
+Naming/MethodParameterName:
+  AllowedNames:
+    - n

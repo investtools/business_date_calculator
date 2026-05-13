@@ -2,7 +2,6 @@ require './spec/spec_helper'
 require 'business_date_calculator/calendar'
 
 describe BusinessDateCalculator::Calendar do
-
   let(:start_date) { Date.parse('2014-12-01') }
   let(:end_date) { Date.parse('2015-02-01') }
   let(:business_date_calculator) { BusinessDateCalculator::Calendar.new(start_date, end_date, [Date.parse('2015-01-01')]) }
@@ -39,9 +38,9 @@ describe BusinessDateCalculator::Calendar do
       expect(business_date_calculator.networkdays(Date.parse('2014-12-30'), Date.parse('2015-01-09'))).to eq(7)
     end
     it 'raises ArgumentError when date1 is greater than date2' do
-      expect {
+      expect do
         business_date_calculator.networkdays(Date.parse('2015-01-09'), Date.parse('2015-01-05'))
-      }.to raise_error(ArgumentError, /date1 must be less than or equal to date2/)
+      end.to raise_error(ArgumentError, /date1 must be less than or equal to date2/)
     end
 
     it 'returns 0 when date1 equals date2 (current semantics: workday jumps, not inclusive count)' do
@@ -49,14 +48,15 @@ describe BusinessDateCalculator::Calendar do
     end
 
     it 'is fast but not like roadrunner' do
-      start = (Time.now.to_f.round(3)*1000).to_i
-      bdc = BusinessDateCalculator::Calendar.new(Date.parse('2017-01-01'), Date.parse('2017-01-31'), [Date.parse('2017-01-03')])
+      start = (Time.now.to_f.round(3) * 1000).to_i
+      bdc = BusinessDateCalculator::Calendar.new(Date.parse('2017-01-01'), Date.parse('2017-01-31'),
+                                                 [Date.parse('2017-01-03')])
       jan02 = Date.parse('2017-01-02')
       jan31 = Date.parse('2017-01-31')
-      100000.times do |x|
+      100_000.times do |_x|
         bdc.networkdays(jan02, jan31)
       end
-      puts (Time.now.to_f.round(3)*1000).to_i - start
+      puts (Time.now.to_f.round(3) * 1000).to_i - start
     end
   end
   describe '#advance' do
@@ -71,19 +71,26 @@ describe BusinessDateCalculator::Calendar do
     it 'returns yesterday' do
       xstart_date = Date.today - 252.days
       xend_date = Date.today + 252.days
-      expect(BusinessDateCalculator::Calendar.new(xstart_date, xend_date, []).advance(Date.parse('2016-02-17'), -1, :following)).to eq yesterday
+      expect(BusinessDateCalculator::Calendar.new(xstart_date, xend_date, []).advance(Date.parse('2016-02-17'), -1,
+                                                                                      :following)).to eq yesterday
     end
     it 'returns the date 30 days before' do
-      result_date = BusinessDateCalculator::Calendar.new(Date.today, Date.today + 5.days, []).advance(Date.parse('2018-01-02'), -30, :following)
+      result_date = BusinessDateCalculator::Calendar.new(Date.today, Date.today + 5.days, []).advance(
+        Date.parse('2018-01-02'), -30, :following
+      )
       expect(result_date).to eq(Date.parse('2017-11-21'))
     end
   end
   describe '#last_day_of_previous_month' do
     it 'returns the last date of previous month' do
-      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-01-05'))).to eq Date.parse('2014-12-31')
-      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-01-01'))).to eq Date.parse('2014-12-31')
-      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-01-31'))).to eq Date.parse('2014-12-31')
-      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-02-15'))).to eq Date.parse('2015-01-30')
+      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-01-05')))
+        .to eq Date.parse('2014-12-31')
+      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-01-01')))
+        .to eq Date.parse('2014-12-31')
+      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-01-31')))
+        .to eq Date.parse('2014-12-31')
+      expect(business_date_calculator.last_day_of_previous_month(Date.parse('2015-02-15')))
+        .to eq Date.parse('2015-01-30')
     end
 
     it 'handles leap and non-leap February correctly' do
@@ -100,7 +107,8 @@ describe BusinessDateCalculator::Calendar do
 
   describe 'serialization' do
     it 'can be Marshal.dump and Marshal.load with state preserved' do
-      cal = BusinessDateCalculator::Calendar.new(Date.parse('2015-01-05'), Date.parse('2015-01-09'), [Date.parse('2015-01-07')])
+      cal = BusinessDateCalculator::Calendar.new(Date.parse('2015-01-05'), Date.parse('2015-01-09'),
+                                                 [Date.parse('2015-01-07')])
       restored = Marshal.load(Marshal.dump(cal))
 
       expect(restored.is_holiday?(Date.parse('2015-01-07'))).to be(true)
@@ -121,7 +129,7 @@ describe BusinessDateCalculator::Calendar do
             result = cal.advance(date, n, :following)
             errors << "thread #{i} got nil" if result.nil?
             errors << "thread #{i} got non-Date #{result.class}" unless result.is_a?(Date)
-          rescue => e
+          rescue StandardError => e
             errors << "thread #{i}: #{e.class}: #{e.message}"
           end
         end
@@ -147,7 +155,8 @@ describe BusinessDateCalculator::Calendar do
       probe = Date.parse('2024-06-03')
 
       expect(cal.adjust(probe, :following)).to eq(reference.adjust(probe, :following))
-      expect(cal.networkdays(probe, Date.parse('2024-06-10'))).to eq(reference.networkdays(probe, Date.parse('2024-06-10')))
+      expect(cal.networkdays(probe,
+                             Date.parse('2024-06-10'))).to eq(reference.networkdays(probe, Date.parse('2024-06-10')))
     end
 
     it 'extends forward sufficiently for repeated forward queries' do
